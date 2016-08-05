@@ -26,6 +26,7 @@ toml = "~0.1.28"
 env_logger = "~0.3.3"
 typed-arena = "~1.1.0"
 clap = "~2.2.5"
+regex = "~0.1.73"
 
 [dev-dependencies]
 test_fixtures = { path = "src/test_fixtures" }

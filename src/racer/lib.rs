@@ -6,6 +6,7 @@ extern crate syntex_syntax;
 extern crate toml;
 extern crate env_logger;
 extern crate typed_arena;
+extern crate regex;
 
 #[macro_use]
 pub mod testutils;

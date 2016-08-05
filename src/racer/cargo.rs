@@ -406,7 +406,10 @@ fn find_cratesio_src_dirs(d: PathBuf) -> Vec<PathBuf> {
         let path = vectry!(entry).path();
         if path.is_dir() {
             if let Some(ref fname) = path.file_name().and_then(|s| s.to_str()) {
-                if fname.starts_with("github.com-") {
+                let domain_regex = r"/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}-/";
+                let re = ::regex::Regex::new(domain_regex).unwrap();
+                if re.is_match(fname) {
+panic!(format!("{:?}", path.clone()));
                     out.push(path.clone());
                 }
             }
