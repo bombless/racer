@@ -1,11 +1,14 @@
-#![cfg_attr(all(test, feature = "nightly"), feature(test))] // we only need test feature when testing
+// we only need test feature when testing
+#![cfg_attr(all(test, feature = "nightly"), feature(test))]
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 extern crate syntex_syntax;
 extern crate toml;
 extern crate env_logger;
-#[macro_use] extern crate clap;
+#[macro_use]
+extern crate clap;
 
 extern crate racer;
 
@@ -30,33 +33,36 @@ use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 
 #[cfg(not(test))]
 fn match_with_snippet_fn(m: Match, session: &core::Session, interface: Interface) {
-    let (linenum, charnum) = scopes::point_to_coords_from_file(&m.filepath, m.point, session).unwrap();
+    let (linenum, charnum) = scopes::point_to_coords_from_file(&m.filepath, m.point, session)
+        .unwrap();
     if m.matchstr == "" {
         panic!("MATCHSTR is empty - waddup?");
     }
 
     let snippet = racer::snippets::snippet_for_match(&m, session);
     match interface {
-        Interface::Text =>
+        Interface::Text => {
             println!("MATCH {};{};{};{};{};{:?};{};{}",
-                        m.matchstr,
-                        snippet,
-                        linenum.to_string(),
-                        charnum.to_string(),
-                        m.filepath.to_str().unwrap(),
-                        m.mtype,
-                        m.contextstr.replace(";" ,"\\;"),
-                        format!("{:?}", m.docs).replace(";" ,"\\;")),
-        Interface::TabText =>
+                     m.matchstr,
+                     snippet,
+                     linenum.to_string(),
+                     charnum.to_string(),
+                     m.filepath.to_str().unwrap(),
+                     m.mtype,
+                     m.contextstr.replace(";", "\\;"),
+                     format!("{:?}", m.docs).replace(";", "\\;"))
+        }
+        Interface::TabText => {
             println!("MATCH\t{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t{:?}",
-                        m.matchstr,
-                        snippet,
-                        linenum.to_string(),
-                        charnum.to_string(),
-                        m.filepath.to_str().unwrap(),
-                        m.mtype,
-                        m.contextstr.replace("\t", "\\t"),
-                        m.docs),
+                     m.matchstr,
+                     snippet,
+                     linenum.to_string(),
+                     charnum.to_string(),
+                     m.filepath.to_str().unwrap(),
+                     m.mtype,
+                     m.contextstr.replace("\t", "\\t"),
+                     m.docs)
+        }
     }
 }
 
@@ -66,22 +72,24 @@ fn match_fn(m: Match, session: &core::Session, interface: Interface) {
                                                                         m.point,
                                                                         session) {
         match interface {
-            Interface::Text =>
+            Interface::Text => {
                 println!("MATCH {},{},{},{},{:?},{}",
-                            m.matchstr,
-                            linenum.to_string(),
-                            charnum.to_string(),
-                            m.filepath.to_str().unwrap(),
-                            m.mtype,
-                            m.contextstr),
-            Interface::TabText =>
+                         m.matchstr,
+                         linenum.to_string(),
+                         charnum.to_string(),
+                         m.filepath.to_str().unwrap(),
+                         m.mtype,
+                         m.contextstr)
+            }
+            Interface::TabText => {
                 println!("MATCH\t{}\t{}\t{}\t{}\t{:?}\t{}",
-                            m.matchstr,
-                            linenum.to_string(),
-                            charnum.to_string(),
-                            m.filepath.to_str().unwrap(),
-                            m.mtype,
-                            m.contextstr),
+                         m.matchstr,
+                         linenum.to_string(),
+                         charnum.to_string(),
+                         m.filepath.to_str().unwrap(),
+                         m.mtype,
+                         m.contextstr)
+            }
         }
     } else {
         error!("Could not resolve file coords for match {:?}", m);
@@ -97,8 +105,7 @@ fn complete(cfg: Config, print_type: CompletePrinter) {
 }
 
 #[cfg(not(test))]
-fn complete_by_line_coords(cfg: Config,
-                           print_type: CompletePrinter) {
+fn complete_by_line_coords(cfg: Config, print_type: CompletePrinter) {
     // input: linenum, colnum, fname
     let tb = std::thread::Builder::new().name("searcher".to_owned());
 
@@ -106,8 +113,9 @@ fn complete_by_line_coords(cfg: Config,
     // end up failing and leaving tmp files around if racer crashes,
     // so catch the crash.
     let res = tb.spawn(move || {
-        run_the_complete_fn(&cfg, print_type);
-    }).unwrap();
+            run_the_complete_fn(&cfg, print_type);
+        })
+        .unwrap();
     if let Err(e) = res.join() {
         error!("Search thread paniced: {:?}", e);
     }
@@ -119,7 +127,7 @@ fn complete_by_line_coords(cfg: Config,
 #[derive(Debug)]
 enum CompletePrinter {
     Normal,
-    WithSnippets
+    WithSnippets,
 }
 
 #[cfg(not(test))]
@@ -145,14 +153,16 @@ fn run_the_complete_fn(cfg: &Config, print_type: CompletePrinter) {
         cache_file_contents_from_stdin(substitute_file, &cache);
     }
 
-    let src = session.load_file(fn_path);
+    let src = if Ok(x) = session.load_file(fn_path) {
+        x
+    } else {
+        return;
+    };
     let line = &getline(substitute_file, cfg.linenum, &session);
     let (start, pos) = util::expand_ident(line, cfg.charnum);
     match cfg.interface {
-        Interface::Text =>
-            println!("PREFIX {},{},{}", start, pos, &line[start..pos]),
-        Interface::TabText =>
-            println!("PREFIX\t{}\t{}\t{}", start, pos, &line[start..pos]),
+        Interface::Text => println!("PREFIX {},{},{}", start, pos, &line[start..pos]),
+        Interface::TabText => println!("PREFIX\t{}\t{}\t{}", start, pos, &line[start..pos]),
     }
 
     let point = scopes::coords_to_point(&src, cfg.linenum, cfg.charnum);
@@ -181,12 +191,17 @@ fn external_complete(cfg: Config, print_type: CompletePrinter) {
                 CompletePrinter::WithSnippets => match_with_snippet_fn(m, &session, cfg.interface),
             }
         } else {
-            for m in do_external_search(&p[1..], &m.filepath, m.point,
+            for m in do_external_search(&p[1..],
+                                        &m.filepath,
+                                        m.point,
                                         core::SearchType::StartsWith,
-                                        core::Namespace::BothNamespaces, &session) {
+                                        core::Namespace::BothNamespaces,
+                                        &session) {
                 match print_type {
                     CompletePrinter::Normal => match_fn(m, &session, cfg.interface),
-                    CompletePrinter::WithSnippets => match_with_snippet_fn(m, &session, cfg.interface),
+                    CompletePrinter::WithSnippets => {
+                        match_with_snippet_fn(m, &session, cfg.interface)
+                    }
                 }
             }
         }
@@ -208,10 +223,8 @@ fn prefix(cfg: Config) {
     let line = &getline(fn_path, cfg.linenum, &session);
     let (start, pos) = util::expand_ident(line, cfg.charnum);
     match cfg.interface {
-        Interface::Text =>
-            println!("PREFIX {},{},{}", start, pos, &line[start..pos]),
-        Interface::TabText =>
-            println!("PREFIX\t{}\t{}\t{}", start, pos, &line[start..pos]),
+        Interface::Text => println!("PREFIX {},{},{}", start, pos, &line[start..pos]),
+        Interface::TabText => println!("PREFIX\t{}\t{}\t{}", start, pos, &line[start..pos]),
     }
 }
 
@@ -229,7 +242,8 @@ fn find_definition(cfg: Config) {
     let src = session.load_file(fn_path);
     let pos = scopes::coords_to_point(&src, cfg.linenum, cfg.charnum);
 
-    core::find_definition(&src, fn_path, pos, &session).map(|m| match_fn(m, &session, cfg.interface));
+    core::find_definition(&src, fn_path, pos, &session)
+        .map(|m| match_fn(m, &session, cfg.interface));
     println!("END");
 }
 
@@ -240,18 +254,22 @@ fn check_rust_src_env_var() {
         if !v.is_empty() {
             let f = Path::new(v[0]);
             if !f.exists() {
-                println!("racer can't find the directory pointed to by the RUST_SRC_PATH variable \"{}\". Try using an absolute fully qualified path and make sure it points to the src directory of a rust checkout - e.g. \"/home/foouser/src/rust/src\".", srcpaths);
+                println!("racer can't find the directory pointed to by the RUST_SRC_PATH \
+                          variable \"{}\". Try using an absolute fully qualified path and make \
+                          sure it points to the src directory of a rust checkout - e.g. \
+                          \"/home/foouser/src/rust/src\".",
+                         srcpaths);
                 std::process::exit(1);
             } else if !f.join("libstd").exists() {
-                println!("Unable to find libstd under RUST_SRC_PATH. N.B. RUST_SRC_PATH variable needs to point to the *src* directory inside a rust checkout e.g. \"/home/foouser/src/rust/src\". Current value \"{}\"", srcpaths);
+                println!("Unable to find libstd under RUST_SRC_PATH. N.B. RUST_SRC_PATH variable \
+                          needs to point to the *src* directory inside a rust checkout e.g. \
+                          \"/home/foouser/src/rust/src\". Current value \"{}\"",
+                         srcpaths);
                 std::process::exit(1);
             }
         }
     } else {
-        let default_paths = [
-            "/usr/local/src/rust/src",
-            "/usr/src/rust/src",
-        ];
+        let default_paths = ["/usr/local/src/rust/src", "/usr/src/rust/src"];
         for &path in &default_paths {
             let f = Path::new(path);
             if f.exists() {
@@ -260,7 +278,8 @@ fn check_rust_src_env_var() {
             }
         }
 
-        println!("RUST_SRC_PATH environment variable must be set to point to the src directory of a rust checkout. E.g. \"/home/foouser/src/rust/src\"");
+        println!("RUST_SRC_PATH environment variable must be set to point to the src directory \
+                  of a rust checkout. E.g. \"/home/foouser/src/rust/src\"");
         std::process::exit(1);
     }
 }
@@ -278,7 +297,7 @@ fn daemon(cfg: Config) {
         let cli = build_cli().setting(AppSettings::NoBinaryName);
         let matches = match cfg.interface {
             Interface::Text => cli.get_matches_from(input.trim_right().split_whitespace()),
-            Interface::TabText => cli.get_matches_from(input.trim_right().split('\t'))
+            Interface::TabText => cli.get_matches_from(input.trim_right().split('\t')),
         };
         run(matches, cfg.interface);
 
@@ -289,15 +308,17 @@ fn daemon(cfg: Config) {
 #[cfg(not(test))]
 #[derive(Copy, Clone)]
 enum Interface {
-    Text,    // The original human-readable format.
-    TabText, // Machine-readable format.  This is basically the same as Text, except that all field
-             // separators are replaced with tabs.
-             // In `deamon` mode tabs are also used to delimit command arguments.
+    Text, // The original human-readable format.
+    TabText, /* Machine-readable format.  This is basically the same as Text, except that all field
+              * separators are replaced with tabs.
+              * In `deamon` mode tabs are also used to delimit command arguments. */
 }
 
 #[cfg(not(test))]
 impl Default for Interface {
-    fn default() -> Self { Interface::Text }
+    fn default() -> Self {
+        Interface::Text
+    }
 }
 
 #[cfg(not(test))]
@@ -317,21 +338,21 @@ impl<'a> From<&'a ArgMatches<'a>> for Config {
         // We check for charnum because it's the second argument, which means more than just
         // an FQN was used (i.e. racer complete <linenum> <charnum> <fn_name> [substitute_file])
         if m.is_present("charnum") {
-             let cfg = Config {
+            let cfg = Config {
                 charnum: value_t_or_exit!(m.value_of("charnum"), usize),
                 fn_name: m.value_of("path").map(PathBuf::from),
                 substitute_file: m.value_of("substitute_file").map(PathBuf::from),
                 ..Default::default()
-             };
-             if !m.is_present("linenum") {
-            // Becasue of the hack to allow fqn and linenum to share a single arg we set FQN
-            // to None and set the charnum correctly using the FQN arg so there's no
-            // hackery later
-                return Config {linenum: value_t_or_exit!(m.value_of("fqn"), usize), .. cfg };
+            };
+            if !m.is_present("linenum") {
+                // Becasue of the hack to allow fqn and linenum to share a single arg we set FQN
+                // to None and set the charnum correctly using the FQN arg so there's no
+                // hackery later
+                return Config { linenum: value_t_or_exit!(m.value_of("fqn"), usize), ..cfg };
             }
-            return Config {linenum: value_t_or_exit!(m.value_of("linenum"), usize), .. cfg };
+            return Config { linenum: value_t_or_exit!(m.value_of("linenum"), usize), ..cfg };
         }
-        Config {fqn: m.value_of("fqn").map(ToOwned::to_owned), ..Default::default() }
+        Config { fqn: m.value_of("fqn").map(ToOwned::to_owned), ..Default::default() }
     }
 }
 
@@ -344,8 +365,7 @@ fn build_cli<'a, 'b>() -> App<'a, 'b> {
         .version(env!("CARGO_PKG_VERSION"))
         .author("Phil Dawes")
         .about("A Rust code completion utility")
-        .settings(&[AppSettings::GlobalVersion,
-		    AppSettings::SubcommandRequiredElseHelp])
+        .settings(&[AppSettings::GlobalVersion, AppSettings::SubcommandRequiredElseHelp])
         .arg(Arg::with_name("interface")
             .long("interface")
             .short("i")
@@ -393,8 +413,7 @@ fn build_cli<'a, 'b>() -> App<'a, 'b> {
             .arg(Arg::with_name("path")
                 .help("The path to search for name to match")
                 .required(true))
-            .arg(Arg::with_name("substitute_file")
-                .help("An optional substitute file")))
+            .arg(Arg::with_name("substitute_file").help("An optional substitute file")))
         .subcommand(SubCommand::with_name("prefix")
             .arg(Arg::with_name("linenum")
                 .help("The line number at which to find the match")
@@ -415,12 +434,9 @@ fn build_cli<'a, 'b>() -> App<'a, 'b> {
             .arg(Arg::with_name("charnum")
                 .help("The char number to search for matches")
                 .requires("path"))
-            .arg(Arg::with_name("path")
-                .help("The path to search for name to match"))
-            .arg(Arg::with_name("substitute_file")
-                .help("An optional substitute file"))
-            .arg(Arg::with_name("linenum")
-                .help("The line number at which to find the match")))
+            .arg(Arg::with_name("path").help("The path to search for name to match"))
+            .arg(Arg::with_name("substitute_file").help("An optional substitute file"))
+            .arg(Arg::with_name("linenum").help("The line number at which to find the match")))
         .after_help("For more information about a specific command try 'racer <command> --help'")
 }
 
@@ -431,9 +447,9 @@ fn main() {
 
     let matches = build_cli().get_matches();
     let interface = match matches.value_of("interface") {
-            Some("tab-text") => Interface::TabText,
-            Some("text") | _ => Interface::Text
-        };
+        Some("tab-text") => Interface::TabText,
+        Some("text") | _ => Interface::Text,
+    };
     run(matches, interface);
 }
 
@@ -445,12 +461,12 @@ fn run(m: ArgMatches, interface: Interface) {
         let mut cfg = Config::from(sub_m);
         cfg.interface = interface;
         match name {
-            "daemon"                => daemon(cfg),
-            "prefix"                => prefix(cfg),
-            "complete"              => complete(cfg, Normal),
+            "daemon" => daemon(cfg),
+            "prefix" => prefix(cfg),
+            "complete" => complete(cfg, Normal),
             "complete-with-snippet" => complete(cfg, WithSnippets),
-            "find-definition"       => find_definition(cfg),
-            _                       => unreachable!()
+            "find-definition" => find_definition(cfg),
+            _ => unreachable!(),
         }
     }
 }

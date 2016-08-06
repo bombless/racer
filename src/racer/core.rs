@@ -44,20 +44,20 @@ pub enum MatchType {
 #[derive(Debug, Clone, Copy)]
 pub enum SearchType {
     ExactMatch,
-    StartsWith
+    StartsWith,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum Namespace {
     TypeNamespace,
     ValueNamespace,
-    BothNamespaces
+    BothNamespaces,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum CompletionType {
     Field,
-    Path
+    Path,
 }
 
 #[derive(Clone)]
@@ -69,7 +69,7 @@ pub struct Match {
     pub mtype: MatchType,
     pub contextstr: String,
     pub generic_args: Vec<String>,
-    pub generic_types: Vec<PathSearch>,  // generic types are evaluated lazily
+    pub generic_types: Vec<PathSearch>, // generic types are evaluated lazily
     pub docs: String,
 }
 
@@ -92,7 +92,8 @@ impl Match {
 
 impl fmt::Debug for Match {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Match [{:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?} |{}|]",
+        write!(f,
+               "Match [{:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?} |{}|]",
                self.matchstr,
                self.filepath.to_str(),
                self.point,
@@ -107,20 +108,21 @@ impl fmt::Debug for Match {
 #[derive(Clone)]
 pub struct Scope {
     pub filepath: path::PathBuf,
-    pub point: usize
+    pub point: usize,
 }
 
 impl Scope {
     pub fn from_match(m: &Match) -> Scope {
-        Scope{ filepath: m.filepath.clone(), point: m.point }
+        Scope {
+            filepath: m.filepath.clone(),
+            point: m.point,
+        }
     }
 }
 
 impl fmt::Debug for Scope {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Scope [{:?}, {:?}]",
-               self.filepath.to_str(),
-               self.point)
+        write!(f, "Scope [{:?}, {:?}]", self.filepath.to_str(), self.point)
     }
 }
 
@@ -128,30 +130,26 @@ impl fmt::Debug for Scope {
 #[derive(Debug,Clone)]
 pub enum Ty {
     Match(Match),
-    PathSearch(Path, Scope),   // A path + the scope to be able to resolve it
+    PathSearch(Path, Scope), // A path + the scope to be able to resolve it
     Tuple(Vec<Ty>),
     FixedLengthVec(Box<Ty>, String), // ty, length expr as string
     RefPtr(Box<Ty>),
     Vec(Box<Ty>),
-    Unsupported
+    Unsupported,
 }
 
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Ty::Match(ref m) => {
-                write!(f, "{}", m.matchstr)
-            }
-            Ty::PathSearch(ref p, _) => {
-                write!(f, "{}", p)
-            }
+            Ty::Match(ref m) => write!(f, "{}", m.matchstr),
+            Ty::PathSearch(ref p, _) => write!(f, "{}", p),
             Ty::Tuple(ref vec) => {
                 let mut first = true;
                 try!(write!(f, "("));
                 for field in vec.iter() {
                     if first {
                         try!(write!(f, "{}", field));
-                            first = false;
+                        first = false;
                     } else {
                         try!(write!(f, ", {}", field));
                     }
@@ -170,12 +168,8 @@ impl fmt::Display for Ty {
                 try!(write!(f, "{}", ty));
                 write!(f, "]")
             }
-            Ty::RefPtr(ref ty) => {
-                write!(f, "&{}", ty)
-            }
-            Ty::Unsupported => {
-                write!(f, "_")
-            }
+            Ty::RefPtr(ref ty) => write!(f, "&{}", ty),
+            Ty::Unsupported => write!(f, "_"),
         }
     }
 }
@@ -184,28 +178,42 @@ impl fmt::Display for Ty {
 #[derive(Clone)]
 pub struct Path {
     pub global: bool,
-    pub segments: Vec<PathSegment>
+    pub segments: Vec<PathSegment>,
 }
 
 impl Path {
     pub fn generic_types(&self) -> ::std::slice::Iter<Path> {
-        self.segments[self.segments.len()-1].types.iter()
+        self.segments[self.segments.len() - 1].types.iter()
     }
 
     pub fn from_vec(global: bool, v: Vec<&str>) -> Path {
-        let segs = v
-            .into_iter()
-            .map(|x| PathSegment{ name: x.to_owned(), types: Vec::new() })
+        let segs = v.into_iter()
+            .map(|x| {
+                PathSegment {
+                    name: x.to_owned(),
+                    types: Vec::new(),
+                }
+            })
             .collect::<Vec<_>>();
-        Path{ global: global, segments: segs }
+        Path {
+            global: global,
+            segments: segs,
+        }
     }
 
     pub fn from_svec(global: bool, v: Vec<String>) -> Path {
-        let segs = v
-            .into_iter()
-            .map(|x| PathSegment{ name: x, types: Vec::new() })
+        let segs = v.into_iter()
+            .map(|x| {
+                PathSegment {
+                    name: x,
+                    types: Vec::new(),
+                }
+            })
             .collect::<Vec<_>>();
-        Path{ global: global, segments: segs }
+        Path {
+            global: global,
+            segments: segs,
+        }
     }
 }
 
@@ -271,19 +279,20 @@ impl fmt::Display for Path {
 #[derive(Debug,Clone)]
 pub struct PathSegment {
     pub name: String,
-    pub types: Vec<Path>
+    pub types: Vec<Path>,
 }
 
 #[derive(Clone)]
 pub struct PathSearch {
     pub path: Path,
     pub filepath: path::PathBuf,
-    pub point: usize
+    pub point: usize,
 }
 
 impl fmt::Debug for PathSearch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Search [{:?}, {:?}, {:?}]",
+        write!(f,
+               "Search [{:?}, {:?}, {:?}]",
                self.path,
                self.filepath.to_str(),
                self.point)
@@ -292,14 +301,14 @@ impl fmt::Debug for PathSearch {
 
 pub struct IndexedSource {
     pub code: String,
-    pub idx: Vec<(usize, usize)>
+    pub idx: Vec<(usize, usize)>,
 }
 
 #[derive(Clone,Copy)]
 pub struct Src<'c> {
     pub src: &'c IndexedSource,
     pub from: usize,
-    pub to: usize
+    pub to: usize,
 }
 
 impl IndexedSource {
@@ -307,14 +316,14 @@ impl IndexedSource {
         let indices = codecleaner::code_chunks(&src).collect();
         IndexedSource {
             code: src,
-            idx: indices
+            idx: indices,
         }
     }
 
     pub fn with_src(&self, new_src: String) -> IndexedSource {
         IndexedSource {
             code: new_src,
-            idx: self.idx.clone()
+            idx: self.idx.clone(),
         }
     }
 
@@ -326,7 +335,7 @@ impl IndexedSource {
         Src {
             src: self,
             from: from,
-            to: self.len()
+            to: self.len(),
         }
     }
 }
@@ -340,7 +349,7 @@ impl<'c> Src<'c> {
         Src {
             src: self.src,
             from: self.from + from,
-            to: self.to
+            to: self.to,
         }
     }
 
@@ -348,7 +357,7 @@ impl<'c> Src<'c> {
         Src {
             src: self.src,
             from: self.from,
-            to: self.from + to
+            to: self.from + to,
         }
     }
 
@@ -356,12 +365,15 @@ impl<'c> Src<'c> {
         Src {
             src: self.src,
             from: self.from + from,
-            to: self.from + to
+            to: self.from + to,
         }
     }
 
     pub fn chunk_indices(&self) -> CodeChunkIter<'c> {
-        CodeChunkIter { src: *self, iter: self.src.idx.iter() }
+        CodeChunkIter {
+            src: *self,
+            iter: self.src.idx.iter(),
+        }
     }
 }
 
@@ -369,7 +381,7 @@ impl<'c> Src<'c> {
 // N.b. src can be a substr, so iteration skips chunks that aren't part of the substr
 pub struct CodeChunkIter<'c> {
     src: Src<'c>,
-    iter: slice::Iter<'c, (usize, usize)>
+    iter: slice::Iter<'c, (usize, usize)>,
 }
 
 impl<'c> Iterator for CodeChunkIter<'c> {
@@ -386,9 +398,8 @@ impl<'c> Iterator for CodeChunkIter<'c> {
                     if start > self.src.to {
                         return None;
                     } else {
-                        return Some((
-                            max(start, self.src.from) - self.src.from,
-                            min(end, self.src.to) - self.src.from));
+                        return Some((max(start, self.src.from) - self.src.from,
+                                     min(end, self.src.to) - self.src.from));
                     }
                 }
             }
@@ -449,34 +460,36 @@ impl FileCache {
         File::open(path)
     }
 
-    fn read_file(&self, path: &path::Path) -> Vec<u8> {
+    fn read_file(&self, path: &path::Path) -> Result<Vec<u8>, ()> {
         let mut rawbytes = Vec::new();
         if let Ok(mut f) = self.open_file(path) {
             f.read_to_end(&mut rawbytes).unwrap();
             // skip BOM bytes, if present
             if rawbytes.len() > 2 && rawbytes[0..3] == [0xEF, 0xBB, 0xBF] {
                 let mut it = rawbytes.into_iter();
-                it.next(); it.next(); it.next();
-                it.collect()
+                it.next();
+                it.next();
+                it.next();
+                Ok(it.collect())
             } else {
-                rawbytes
+                Ok(rawbytes)
             }
         } else {
             error!("read_file couldn't open {:?}. Returning empty string", path);
-            Vec::new()
+            Err(())
         }
     }
 
-    pub fn load_file(&self, filepath: &path::Path) -> Rc<IndexedSource> {
+    pub fn load_file(&self, filepath: &path::Path) -> Result<Rc<IndexedSource>, ()> {
         if let Some(src) = self.raw_map.borrow().get(filepath) {
             return src.clone();
         }
         // nothing found, insert into cache
-        let rawbytes = self.read_file(filepath);
+        let rawbytes = self.read_file(filepath)?;
         let res = String::from_utf8(rawbytes).unwrap();
         let src = Rc::new(IndexedSource::new(res));
         self.raw_map.borrow_mut().insert(filepath.to_path_buf(), src.clone());
-        src
+        Ok(src)
     }
 
     pub fn load_file_and_mask_comments(&self, filepath: &path::Path) -> Rc<IndexedSource> {
@@ -486,33 +499,36 @@ impl FileCache {
         // nothing found, insert into cache
         let src = self.load_file(filepath);
         let msrc = Rc::new(src.with_src(scopes::mask_comments(src.as_src())));
-        self.masked_map.borrow_mut().insert(filepath.to_path_buf(),
-                                            msrc.clone());
+        self.masked_map.borrow_mut().insert(filepath.to_path_buf(), msrc.clone());
         msrc
     }
 }
 
 pub struct Session<'c> {
-    query_path: path::PathBuf,            // the input path of the query
-    substitute_file: path::PathBuf,       // the temporary file
-    cache: &'c FileCache,                 // cache for file contents
+    query_path: path::PathBuf, // the input path of the query
+    substitute_file: path::PathBuf, // the temporary file
+    cache: &'c FileCache, // cache for file contents
 }
 
 
 impl<'c> fmt::Debug for Session<'c> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Session({:?}, {:?})", self.query_path, self.substitute_file)
+        write!(f,
+               "Session({:?}, {:?})",
+               self.query_path,
+               self.substitute_file)
     }
 }
 
 impl<'c> Session<'c> {
     pub fn from_path(cache: &'c FileCache,
                      query_path: &path::Path,
-                     substitute_file: &path::Path) -> Session<'c> {
+                     substitute_file: &path::Path)
+                     -> Session<'c> {
         Session {
             query_path: query_path.to_path_buf(),
             substitute_file: substitute_file.to_path_buf(),
-            cache: cache
+            cache: cache,
         }
     }
 
@@ -543,20 +559,27 @@ impl<'c> Session<'c> {
 }
 
 
-pub fn complete_from_file(src: &str, filepath: &path::Path,
-                          pos: usize, session: &Session) -> vec::IntoIter<Match> {
+pub fn complete_from_file(src: &str,
+                          filepath: &path::Path,
+                          pos: usize,
+                          session: &Session)
+                          -> vec::IntoIter<Match> {
     let start = scopes::get_start_of_search_expr(src, pos);
     let expr = &src[start..pos];
 
     let (contextstr, searchstr, completetype) = scopes::split_into_context_and_completion(expr);
 
-    debug!("{:?}: contextstr is |{}|, searchstr is |{}|", completetype, contextstr, searchstr);
+    debug!("{:?}: contextstr is |{}|, searchstr is |{}|",
+           completetype,
+           contextstr,
+           searchstr);
 
     let mut out = Vec::new();
 
     match completetype {
         CompletionType::Path => {
-            // reparse the string, searchstr is not corrected parsed with split_into_context_and_completion
+            // reparse the string,
+            // searchstr is not corrected parsed with split_into_context_and_completion
             // it will stop by character like '{', and ' ', which occurs in the following case
             // 1. The line is use contextstr::{A, B, C, searchstr
             // 2. The line started with contextstr or ::
@@ -572,8 +595,12 @@ pub fn complete_from_file(src: &str, filepath: &path::Path,
             let is_use = line.starts_with("use ");
 
             let v = if is_use || is_global {
-                if is_use { line = &line[4..]; }
-                if is_global { line = &line[2..]; }
+                if is_use {
+                    line = &line[4..];
+                }
+                if is_global {
+                    line = &line[2..];
+                }
 
                 line.split("::").collect::<Vec<_>>()
             } else {
@@ -581,12 +608,15 @@ pub fn complete_from_file(src: &str, filepath: &path::Path,
             };
 
             let path = Path::from_vec(is_global, v);
-            for m in nameres::resolve_path(&path, filepath, pos,
-                                         SearchType::StartsWith, Namespace::BothNamespaces,
-                                         session) {
+            for m in nameres::resolve_path(&path,
+                                           filepath,
+                                           pos,
+                                           SearchType::StartsWith,
+                                           Namespace::BothNamespaces,
+                                           session) {
                 out.push(m);
             }
-        },
+        }
         CompletionType::Field => {
             let context = ast::get_type_of(contextstr.to_owned(), filepath, pos, session);
             debug!("complete_from_file context is {:?}", context);
@@ -598,7 +628,11 @@ pub fn complete_from_file(src: &str, filepath: &path::Path,
     out.into_iter()
 }
 
-fn complete_field_for_ty(ty: Ty, searchstr: &str, stype: SearchType, session: &Session, out: &mut Vec<Match>) {
+fn complete_field_for_ty(ty: Ty,
+                         searchstr: &str,
+                         stype: SearchType,
+                         session: &Session,
+                         out: &mut Vec<Match>) {
     // TODO would be nice if this and other methods could operate on a ref instead of requiring
     // ownership
     match ty {
@@ -606,43 +640,64 @@ fn complete_field_for_ty(ty: Ty, searchstr: &str, stype: SearchType, session: &S
             for m in nameres::search_for_field_or_method(m, searchstr, stype, session) {
                 out.push(m)
             }
-        },
-        Ty::RefPtr(m) => {
-            complete_field_for_ty(*m.to_owned(), searchstr, stype, session, out)
         }
+        Ty::RefPtr(m) => complete_field_for_ty(*m.to_owned(), searchstr, stype, session, out),
         _ => {}
     }
 }
 
-pub fn find_definition(src: &str, filepath: &path::Path, pos: usize, session: &Session) -> Option<Match> {
+pub fn find_definition(src: &str,
+                       filepath: &path::Path,
+                       pos: usize,
+                       session: &Session)
+                       -> Option<Match> {
     find_definition_(src, filepath, pos, session)
 }
 
-pub fn find_definition_(src: &str, filepath: &path::Path, pos: usize, session: &Session) -> Option<Match> {
+pub fn find_definition_(src: &str,
+                        filepath: &path::Path,
+                        pos: usize,
+                        session: &Session)
+                        -> Option<Match> {
     let (start, end) = scopes::expand_search_expr(src, pos);
     let expr = &src[start..end];
     let (contextstr, searchstr, completetype) = scopes::split_into_context_and_completion(expr);
 
-    debug!("find_definition_ for |{:?}| |{:?}| {:?}", contextstr, searchstr, completetype);
+    debug!("find_definition_ for |{:?}| |{:?}| {:?}",
+           contextstr,
+           searchstr,
+           completetype);
 
     match completetype {
         CompletionType::Path => {
             let mut v = expr.split("::").collect::<Vec<_>>();
             let global = v[0] == "";
-            if global {      // i.e. starts with '::' e.g. ::std::old_io::blah
+            if global {
+                // i.e. starts with '::' e.g. ::std::old_io::blah
                 v.remove(0);
             }
 
-            let segs = v
-                .into_iter()
-                .map(|x| PathSegment{ name: x.to_owned(), types: Vec::new() })
+            let segs = v.into_iter()
+                .map(|x| {
+                    PathSegment {
+                        name: x.to_owned(),
+                        types: Vec::new(),
+                    }
+                })
                 .collect::<Vec<_>>();
-            let path = Path{ global: global, segments: segs };
+            let path = Path {
+                global: global,
+                segments: segs,
+            };
 
-            nameres::resolve_path(&path, filepath, pos,
-                                  SearchType::ExactMatch, Namespace::BothNamespaces,
-                                  session).nth(0)
-        },
+            nameres::resolve_path(&path,
+                                  filepath,
+                                  pos,
+                                  SearchType::ExactMatch,
+                                  Namespace::BothNamespaces,
+                                  session)
+                .nth(0)
+        }
         CompletionType::Field => {
             let context = ast::get_type_of(contextstr.to_owned(), filepath, pos, session);
             debug!("context is {:?}", context);
@@ -650,7 +705,11 @@ pub fn find_definition_(src: &str, filepath: &path::Path, pos: usize, session: &
             context.and_then(|ty| {
                 // for now, just handle matches
                 if let Ty::Match(m) = ty {
-                    nameres::search_for_field_or_method(m, searchstr, SearchType::ExactMatch, session).nth(0)
+                    nameres::search_for_field_or_method(m,
+                                                        searchstr,
+                                                        SearchType::ExactMatch,
+                                                        session)
+                        .nth(0)
                 } else {
                     None
                 }
